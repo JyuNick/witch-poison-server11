@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>女巫的毒药 · 双人对战</title>
+<style>
+  body { font-family: sans-serif; text-align: center; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 60px);
+    gap: 6px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #333;
+    font-size: 22px;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .disabled { pointer-events: none; opacity: 0.4; }
+</style>
+</head>
+<body>
+
+<h2>🧙 女巫的毒药（双人在线）</h2>
+<p id="status">连接中...</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const ws = new WebSocket("ws://localhost:8080");
+let myId = null;
+let myTurn = false;
+let poisonChosen = false;
+
+const grid = document.getElementById("grid");
+const status = document.getElementById("status");
+
+for (let i = 0; i < 25; i++) {
+  const d = document.createElement("div");
+  d.className = "cell";
+  d.textContent = i;
+  d.onclick = () => clickCell(i, d);
+  grid.appendChild(d);
+}
+
+ws.onmessage = e => {
+  const data = JSON.parse(e.data);
+
+  if (data.type === "init") {
+    myId = data.id;
+    status.textContent = "请选择你的毒药";
+  }
+
+  if (data.type === "start") {
+    myTurn = data.turn === myId;
+    status.textContent = myTurn ? "你的回合" : "对方回合";
+  }
+
+  if (data.type === "move") {
+    myTurn = data.turn === myId;
+    status.textContent = myTurn ? "你的回合" : "对方回合";
+  }
+
+  if (data.type === "end") {
+    alert(data.loser === myId ? "💀 你输了" : "🎉 你赢了");
+    location.reload();
+  }
+};
+
+function clickCell(index, el) {
+  if (!poisonChosen) {
+    poisonChosen = true;
+    el.textContent = "☠";
+    ws.send(JSON.stringify({ type: "poison", index }));
+    status.textContent = "等待对方选择毒药...";
+    return;
+  }
+
+  if (!myTurn) return;
+
+  ws.send(JSON.stringify({ type: "select", index }));
+}
+</script>
+</body>
+</html>
